@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Right Hand Thumb Rule Simulation</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            --card-bg: rgba(20, 20, 35, 0.8);
+            --text-color: #fff;
+            --accent: #ffcc00;
+            --field-color: #00d4ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-color);
+            padding-bottom: 40px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+            text-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+        }
+
+        .subtitle { color: #aaa; font-size: 0.9rem; margin-top: 5px; }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Canvas Section */
+        .canvas-section {
+            flex: 2;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .canvas-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-label {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            pointer-events: none;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            background: #0b0b14;
+            display: block;
+        }
+
+        /* Controls Section */
+        .controls-sidebar {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .control-group { margin-bottom: 25px; }
+        .group-title {
+            color: var(--accent);
+            font-size: 1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
+        }
+
+        /* Buttons */
+        .btn-grid { display: flex; gap: 8px; }
+        
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: #ddd;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover { background: rgba(255,255,255,0.2); }
+        
+        button.active {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
+        }
+
+        button.direction-up.active { background: #00ff88; color: #000; box-shadow: 0 0 15px rgba(0,255,136,0.3); }
+        button.direction-down.active { background: #ff4444; color: #fff; box-shadow: 0 0 15px rgba(255,68,68,0.3); }
+
+        /* Sliders */
+        .slider-row { margin-bottom: 15px; }
+        label { display: flex; justify-content: space-between; font-size: 0.9rem; color: #ccc; margin-bottom: 5px; }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #444;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Legend & Info */
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; color: #aaa; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        .explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 204, 0, 0.1);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Responsive Tweaks */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.4rem; }
+            .main-container { flex-direction: column; padding: 10px; }
+            .controls-sidebar { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Right Hand Thumb Rule</h1>
+    <p class="subtitle">Interactive Physics Simulation</p>
+</header>
+
+<div class="main-container">
+    <!-- Canvas Area -->
+    <div class="canvas-section">
+        <div class="canvas-card">
+            <span class="canvas-label">3D Perspective</span>
+            <canvas id="canvas3d"></canvas>
+        </div>
+        <div class="canvas-card">
+            <span class="canvas-label">Cross-Section (Top Down)</span>
+            <canvas id="canvas2d" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Controls Area -->
+    <div class="controls-sidebar">
+        
+        <!-- Wire Type -->
+        <div class="control-group">
+            <div class="group-title">🔌 Wire Configuration</div>
+            <div class="btn-grid">
+                <button class="wire-btn active" onclick="setWire('straight')">Straight</button>
+                <button class="wire-btn" onclick="setWire('loop')">Loop</button>
+                <button class="wire-btn" onclick="setWire('solenoid')">Solenoid</button>
+            </div>
+        </div>
+
+        <!-- Current Direction -->
+        <div class="control-group">
+            <div class="group-title">⚡ Current Direction</div>
+            <div class="btn-grid">
+                <button id="btnUp" class="direction-up active" onclick="setDirection(true)">Up / Forward</button>
+                <button id="btnDown" class="direction-down" onclick="setDirection(false)">Down / Reverse</button>
+            </div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="control-group">
+            <div class="group-title">⚙️ Adjustments</div>
+            
+            <div class="slider-row">
+                <label><span>Animation Speed</span> <span id="valSpeed">1x</span></label>
+                <input type="range" min="0" max="100" value="50" oninput="updateSpeed(this.value)">
+            </div>
+
+            <div class="slider-row">
+                <label><span>View Rotation (3D)</span> <span id="valRot">30°</span></label>
+                <input type="range" min="-180" max="180" value="30" oninput="state.rotation = parseInt(this.value); document.getElementById('valRot').innerText = this.value + '°'">
+            </div>
+        </div>
+
+        <!-- Toggles -->
+        <div class="control-group">
+            <label style="justify-content: start; gap: 10px; cursor: pointer;">
+                <input type="checkbox" checked onchange="state.showHand = this.checked"> Show Hand Helper
+            </label>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: #ffcc00"></div> Current (I)</div>
+            <div class="legend-item"><div class="dot" style="background: #00d4ff"></div> B-Field</div>
+            <div class="legend-item"><span style="color:#ff6666; font-weight:bold">⊙</span> Out of Page</div>
+            <div class="legend-item"><span style="color:#6666ff; font-weight:bold">⊗</span> Into Page</div>
+        </div>
+
+        <div class="explanation">
+            <strong>Rule:</strong> Point your right thumb in the direction of current (Yellow). Your curled fingers show the direction of the magnetic field (Blue).
+        </div>
+    </div>
+</div>
+
+<script>
+    /** Configuration & State */
+    const canvas3d = document.getElementById('canvas3d');
+    const ctx3d = canvas3d.getContext('2d');
+    const canvas2d = document.getElementById('canvas2d');
+    const ctx2d = canvas2d.getContext('2d');
+
+    let state = {
+        wireType: 'straight', // straight, loop, solenoid
+        currentUp: true,
+        rotation: 30,
+        tilt: 20,
+        animOffset: 0,
+        speed: 2,
+        showHand: true
+    };
+
+    /** Resize Handling */
+    function resizeCanvas() {
+        const parent = canvas3d.parentElement;
+        canvas3d.width = parent.clientWidth;
+        canvas3d.height = Math.min(400, parent.clientWidth * 0.8);
+        
+        const parent2 = canvas2d.parentElement;
+        canvas2d.width = parent2.clientWidth;
+        canvas2d.height = 250;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    /** 3D Projection Math (Weak Perspective) */
+    function project(x, y, z) {
+        const cx = canvas3d.width / 2;
+        const cy = canvas3d.height / 2;
+        
+        const radY = state.rotation * Math.PI / 180;
+        const radX = state.tilt * Math.PI / 180;
+
+        // Rotate Y
+        let x1 = x * Math.cos(radY) - z * Math.sin(radY);
+        let z1 = x * Math.sin(radY) + z * Math.cos(radY);
+
+        // Rotate X
+        let y1 = y * Math.cos(radX) - z1 * Math.sin(radX);
+        let z2 = y * Math.sin(radX) + z1 * Math.cos(radX);
+
+        // Project
+        const scale = 500 / (500 + z2);
+        return {
+            x: cx + x1 * scale,
+            y: cy + y1 * scale,
+            scale: scale,
+            z: z2 // for z-sorting
+        };
+    }
+
+    /** Control Functions */
+    function setWire(type) {
+        state.wireType = type;
+        document.querySelectorAll('.wire-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    function setDirection(isUp) {
+        state.currentUp = isUp;
+        document.getElementById('btnUp').classList.toggle('active', isUp);
+        document.getElementById('btnDown').classList.toggle('active', !isUp);
+    }
+
+    function updateSpeed(val) {
+        state.speed = val / 25;
+        document.getElementById('valSpeed').innerText = (state.speed).toFixed(1) + 'x';
+    }
+
+    /** Drawing Helpers */
+    function drawArrow(ctx, x1, y1, x2, y2, color, width = 2) {
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headlen = 8 * width/2; 
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+
+    function drawHand3D(ctx, x, y, isUp) {
+        if (!state.showHand) return;
+        ctx.save();
+        ctx.translate(x + 40, y);
+        if (!isUp) ctx.scale(1, -1);
+        
+        ctx.fillStyle = "rgba(255, 200, 150, 0.8)";
+        ctx.strokeStyle = "rgba(255, 180, 100, 1)";
+        ctx.lineWidth = 2;
+
+        // Simplified Hand Shape
+        ctx.beginPath();
+        // Thumb
+        ctx.moveTo(-10, 20);
+        ctx.lineTo(-10, -30); 
+        ctx.quadraticCurveTo(-10, -50, 0, -50); 
+        ctx.quadraticCurveTo(10, -50, 10, -30);
+        ctx.lineTo(10, 0);
+        // Fingers curled
+        ctx.arc(25, 10, 25, Math.PI, 0); 
+        ctx.lineTo(50, 40);
+        ctx.lineTo(0, 40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Fingernails / Detail
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.moveTo(15, 10); ctx.lineTo(15, 30);
+        ctx.moveTo(30, 10); ctx.lineTo(30, 30);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    /** Main Render Loop */
+    function render() {
+        ctx3d.clearRect(0, 0, canvas3d.width, canvas3d.height);
+        ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
+        
+        state.animOffset += state.speed;
+
+        if (state.wireType === 'straight') drawStraight();
+        else if (state.wireType === 'loop') drawLoop();
+        else if (state.wireType === 'solenoid') drawSolenoid();
+
+        requestAnimationFrame(render);
+    }
+
+    // ==========================================
+    // LOGIC: Straight Wire
+    // ==========================================
+    function drawStraight() {
+        const dir = state.currentUp ? -1 : 1; // Physics Y is often inverted in canvas
+        
+        // --- 3D VIEW ---
+        // 1. Draw Wire
+        const top = project(0, -150, 0);
+        const bot = project(0, 150, 0);
+        
+        ctx3d.beginPath();
+        ctx3d.strokeStyle = '#ffcc00';
+        ctx3d.lineWidth = 8;
+        ctx3d.moveTo(top.x, top.y);
+        ctx3d.lineTo(bot.x, bot.y);
+        ctx3d.stroke();
+
+        // Current Arrow
+        const mid = project(0, 0, 0);
+        drawArrow(ctx3d, mid.x, mid.y + (30*dir), mid.x, mid.y - (30*dir), '#fff', 3);
+
+        // 2. Draw Field Lines (Circles)
+        [40, 70, 100].forEach(radius => {
+            ctx3d.beginPath();
+            const segments = [];
+            for(let i=0; i<=60; i++) {
+                const angle = (i/60) * Math.PI * 2;
+                segments.push(project(Math.cos(angle)*radius, 0, Math.sin(angle)*radius));
+            }
+            
+            // Draw back half (behind wire roughly)
+            for(let i=0; i<segments.length-1; i++) {
+                const p1 = segments[i];
+                const p2 = segments[i+1];
+                const alpha = (p1.z > 0) ? 1 : 0.3; // Simple depth shading
+                ctx3d.strokeStyle = `rgba(0, 212, 255, ${alpha})`;
+                ctx3d.lineWidth = 2;
+                ctx3d.beginPath();
+                ctx3d.moveTo(p1.x, p1.y);
+                ctx3d.lineTo(p2.x, p2.y);
+                ctx3d.stroke();
+            }
+
+            // Moving Particles
+            const particleCount = 4;
+            for(let i=0; i<particleCount; i++) {
+                let angle = (state.animOffset * 0.05) + (i * (Math.PI*2/particleCount));
+                if (!state.currentUp) angle = -angle;
+                
+                const p = project(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
+                
+                ctx3d.fillStyle = '#fff';
+                ctx3d.beginPath();
+                ctx3d.arc(p.x, p.y, 3 * p.scale, 0, Math.PI*2);
+                ctx3d.fill();
+            }
+        });
+
+        // Hand
+        drawHand3D(ctx3d, mid.x, mid.y, state.currentUp);
+
+
+        // --- 2D VIEW (Top Down) ---
+        const cx = canvas2d.width / 2;
+        const cy = canvas2d.height / 2;
+
+        // Field Circles
+        ctx2d.strokeStyle = '#00d4ff';
+        ctx2d.lineWidth = 2;
+        [40, 70, 100].forEach(r => {
+            ctx2d.beginPath();
+            ctx2d.arc(cx, cy, r, 0, Math.PI*2);
+            ctx2d.stroke();
+            
+            // Arrow on circle
+            const angle = -Date.now() / 500 * (state.currentUp ? 1 : -1);
+            const ax = cx + Math.cos(angle) * r;
+            const ay = cy + Math.sin(angle) * r;
+            
+            // Tangent arrow
+            const tangent = angle + (state.currentUp ? Math.PI/2 : -Math.PI/2);
+            drawArrow(ctx2d, ax, ay, ax + Math.cos(tangent)*10, ay + Math.sin(tangent)*10, '#fff', 2);
+        });
+
+        // Wire Cross section
+        ctx2d.fillStyle = '#ffcc00';
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, 15, 0, Math.PI*2);
+        ctx2d.fill();
+
+        // Dot or Cross
+        ctx2d.fillStyle = '#000';
+        ctx2d.font = '20px Arial';
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'middle';
+        ctx2d.fillText(state.currentUp ? '⊙' : '⊗', cx, cy + 2);
+        
+        ctx2d.fillStyle = '#aaa';
+        ctx2d.fillText("Current " + (state.currentUp ? "Out" : "In"), cx, cy + 130);
+    }
+
+    // ==========================================
+    // LOGIC: Current Loop
+    // ==========================================
+    function drawLoop() {
+        const radius = 80;
+        const dir = state.currentUp ? 1 : -1;
+
+        // --- 3D VIEW ---
+        const segments = 60;
+        
+        // Draw Wire Loop
+        ctx3d.beginPath();
+        for(let i=0; i<=segments; i++) {
+            const theta = (i/segments) * Math.PI * 2;
+            const p = project(Math.cos(theta)*radius, 0, Math.sin(theta)*radius);
+            if(i===0) ctx3d.moveTo(p.x, p.y);
+            else ctx3d.lineTo(p.x, p.y);
+        }
+        ctx3d.strokeStyle = '#ffcc00';
+        ctx3d.lineWidth = 8;
+        ctx3d.stroke();
+
+        // Current Indicators on Wire
+        for(let i=0; i<4; i++) {
+            const theta = (Date.now()/1000 * dir) + (i * Math.PI/2);
+            const p1 = project(Math.cos(theta)*radius, 0, Math.sin(theta)*radius);
+            const p2 = project(Math.cos(theta+0.2)*radius, 0, Math.sin(theta+0.2)*radius);
+            drawArrow(ctx3d, p1.x, p1.y, p2.x, p2.y, '#fff', 2);
+        }
+
+        // Field Lines (Toroidal-ish simplified)
+        // We draw vertical ellipses around the wire
+        const fieldCount = 8;
+        for(let i=0; i<fieldCount; i++) {
+            const theta = (i/fieldCount) * Math.PI * 2;
+            const wx = Math.cos(theta)*radius;
+            const wz = Math.sin(theta)*radius;
+            
+            // Draw a circle perpendicular to the wire at this point
+            ctx3d.beginPath();
+            for(let j=0; j<=30; j++) {
+                const phi = (j/30) * Math.PI * 2;
+                // Local circle coords
+                const r = 30;
+                const localX = Math.cos(theta) * Math.cos(phi) * r;
+                const localZ = Math.sin(theta) * Math.cos(phi) * r;
+                const localY = Math.sin(phi) * r;
+                
+                const p = project(wx + localX, localY, wz + localZ);
+                if(j===0) ctx3d.moveTo(p.x, p.y);
+                else ctx3d.lineTo(p.x, p.y);
+            }
+            ctx3d.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+            ctx3d.lineWidth = 1;
+            ctx3d.stroke();
+
+            // Moving particle on field line
+            let phi = (state.animOffset * 0.1); 
+            if(!state.currentUp) phi = -phi; // reverse field if current reverses
+            // Note: Inside loop, field goes Up if current is CCW (Up button)
+            
+            const r = 30;
+            const localX = Math.cos(theta) * Math.cos(phi) * r;
+            const localZ = Math.sin(theta) * Math.cos(phi) * r;
+            const localY = Math.sin(phi) * r;
+            const pp = project(wx + localX, localY, wz + localZ);
+            
+            ctx3d.fillStyle = '#fff';
+            ctx3d.beginPath(); ctx3d.arc(pp.x, pp.y, 2, 0, Math.PI*2); ctx3d.fill();
+        }
+
+        // Central Field
+        const pBot = project(0, 50, 0);
+        const pT
