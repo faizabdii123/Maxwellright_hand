@@ -68,6 +68,8 @@
             border: 1px solid rgba(255,255,255,0.05);
             position: relative;
             overflow: hidden;
+            /* Ensure it has dimension even if empty */
+            min-height: 200px; 
         }
 
         .canvas-label {
@@ -221,9 +223,10 @@
         <div class="control-group">
             <div class="group-title">🔌 Wire Configuration</div>
             <div class="btn-grid">
-                <button class="wire-btn active" onclick="setWire('straight')">Straight</button>
-                <button class="wire-btn" onclick="setWire('loop')">Loop</button>
-                <button class="wire-btn" onclick="setWire('solenoid')">Solenoid</button>
+                <!-- Added 'this' to onclick to avoid global event issues -->
+                <button class="wire-btn active" onclick="setWire('straight', this)">Straight</button>
+                <button class="wire-btn" onclick="setWire('loop', this)">Loop</button>
+                <button class="wire-btn" onclick="setWire('solenoid', this)">Solenoid</button>
             </div>
         </div>
 
@@ -292,15 +295,16 @@
     /** Resize Handling */
     function resizeCanvas() {
         const parent = canvas3d.parentElement;
-        canvas3d.width = parent.clientWidth;
-        canvas3d.height = Math.min(400, parent.clientWidth * 0.8);
+        const width = parent.clientWidth;
+        
+        // Safety check: Ensure width is never 0
+        canvas3d.width = width > 0 ? width : 300; 
+        canvas3d.height = Math.min(400, canvas3d.width * 0.8);
         
         const parent2 = canvas2d.parentElement;
-        canvas2d.width = parent2.clientWidth;
+        canvas2d.width = parent2.clientWidth > 0 ? parent2.clientWidth : 300;
         canvas2d.height = 250;
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
 
     /** 3D Projection Math (Weak Perspective) */
     function project(x, y, z) {
@@ -329,10 +333,11 @@
     }
 
     /** Control Functions */
-    function setWire(type) {
+    // Updated to accept button reference explicitly
+    function setWire(type, btn) {
         state.wireType = type;
         document.querySelectorAll('.wire-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
+        if(btn) btn.classList.add('active');
     }
 
     function setDirection(isUp) {
@@ -591,4 +596,125 @@
 
         // Central Field
         const pBot = project(0, 50, 0);
-        const pT
+        const pTop = project(0, -50, 0);
+        drawArrow(ctx3d, pBot.x, pBot.y, pTop.x, pTop.y, 'rgba(0, 212, 255, 0.8)', 2);
+
+
+        // --- 2D VIEW ---
+        const cx = canvas2d.width / 2;
+        const cy = canvas2d.height / 2;
+        
+        // Wire cross sections
+        ctx2d.fillStyle = '#ffcc00';
+        ctx2d.beginPath(); ctx2d.arc(cx - 60, cy, 10, 0, Math.PI*2); ctx2d.fill();
+        ctx2d.beginPath(); ctx2d.arc(cx + 60, cy, 10, 0, Math.PI*2); ctx2d.fill();
+
+        // Signs
+        ctx2d.fillStyle = '#000';
+        ctx2d.font = '14px Arial';
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'middle';
+        
+        // If current "Up" (CCW looking down), Left is Out, Right is In
+        const leftSign = state.currentUp ? '⊙' : '⊗';
+        const rightSign = state.currentUp ? '⊗' : '⊙';
+        
+        ctx2d.fillText(leftSign, cx - 60, cy);
+        ctx2d.fillText(rightSign, cx + 60, cy);
+
+        // Field lines in center
+        ctx2d.strokeStyle = '#00d4ff';
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx, cy+40); ctx2d.lineTo(cx, cy-40);
+        ctx2d.stroke();
+        
+        // Arrow in center
+        if(state.currentUp) drawArrow(ctx2d, cx, cy+10, cx, cy-10, '#00d4ff');
+        else drawArrow(ctx2d, cx, cy-10, cx, cy+10, '#00d4ff');
+        
+        ctx2d.fillStyle = '#aaa';
+        ctx2d.fillText("Magnetic Field through center", cx, cy + 60);
+    }
+
+    // ==========================================
+    // LOGIC: Solenoid
+    // ==========================================
+    function drawSolenoid() {
+        const radius = 40;
+        const length = 160;
+        const turns = 8;
+        const dir = state.currentUp ? 1 : -1;
+
+        // --- 3D VIEW ---
+        ctx3d.lineWidth = 4;
+        
+        // Draw Helix
+        const points = [];
+        for(let i=0; i<=100; i++) {
+            const t = i/100;
+            const angle = t * turns * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const y = (t - 0.5) * length;
+            points.push(project(x, y, z));
+        }
+
+        // Draw back segments (darker) then front
+        for(let i=0; i<points.length-1; i++) {
+            const p1 = points[i];
+            const p2 = points[i+1];
+            // If z is positive, it's closer to camera (front)
+            const isFront = p1.z > 0;
+            
+            ctx3d.beginPath();
+            ctx3d.strokeStyle = isFront ? '#ffcc00' : '#b38f00';
+            ctx3d.moveTo(p1.x, p1.y);
+            ctx3d.lineTo(p2.x, p2.y);
+            ctx3d.stroke();
+        }
+
+        // Center Field Line (Straight)
+        const top = project(0, -length/2 - 20, 0);
+        const bot = project(0, length/2 + 20, 0);
+        
+        if(state.currentUp) drawArrow(ctx3d, bot.x, bot.y, top.x, top.y, '#00d4ff', 3);
+        else drawArrow(ctx3d, top.x, top.y, bot.x, bot.y, '#00d4ff', 3);
+
+        // --- 2D VIEW ---
+        const cx = canvas2d.width / 2;
+        const cy = canvas2d.height / 2;
+
+        // Simplified Solenoid slice
+        ctx2d.fillStyle = '#ffcc00';
+        for(let i=-3; i<=3; i++) {
+            // Left side dots/crosses
+            ctx2d.beginPath(); ctx2d.arc(cx - 40, cy + i*25, 8, 0, Math.PI*2); ctx2d.fill();
+            // Right side
+            ctx2d.beginPath(); ctx2d.arc(cx + 40, cy + i*25, 8, 0, Math.PI*2); ctx2d.fill();
+            
+            ctx2d.fillStyle = '#000';
+            ctx2d.font = '12px Arial';
+            ctx2d.fillText(state.currentUp ? '⊙' : '⊗', cx - 40, cy + i*25);
+            ctx2d.fillText(state.currentUp ? '⊗' : '⊙', cx + 40, cy + i*25);
+            ctx2d.fillStyle = '#ffcc00';
+        }
+
+        // Central Field
+        const fieldDir = state.currentUp ? -1 : 1;
+        drawArrow(ctx2d, cx, cy + 60*fieldDir, cx, cy - 60*fieldDir, '#00d4ff', 3);
+        
+        ctx2d.fillStyle = '#aaa';
+        ctx2d.fillText("Uniform Field Inside", cx, cy + 100);
+    }
+
+    // Start Animation when window loads
+    window.addEventListener('load', () => {
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        render();
+    });
+
+</script>
+</body>
+</html>
+
